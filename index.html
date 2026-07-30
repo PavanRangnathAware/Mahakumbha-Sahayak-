@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kumbh Mitra — Mahakumbh Nashik Pilgrim Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Mukta:wght@400;500;600;700&family=Mukta+Mahee:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --river-night:#0F2438;
+    --river-teal:#164B4F;
+    --saffron:#E67E22;
+    --marigold:#F2A93B;
+    --vermilion:#AE3B2C;
+    --parchment:#F7F1E3;
+    --stone:#332B22;
+    --gold:#C9A24B;
+    --cream-card:#FFFBF3;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--parchment);
+    color:var(--stone);
+    font-family:'Mukta',sans-serif;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.display{font-family:'Yatra One',cursive; font-weight:400; letter-spacing:.5px;}
+  a{color:inherit;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px;
+    transition:background .35s ease, box-shadow .35s ease, padding .35s ease;
+  }
+  nav.scrolled{
+    background:rgba(15,36,56,.92);
+    backdrop-filter:blur(6px);
+    padding:12px 32px;
+    box-shadow:0 4px 18px rgba(0,0,0,.25);
+  }
+  .brand{display:flex; align-items:center; gap:10px; color:#fff; font-size:22px;}
+  .brand .diya{width:14px;height:14px;border-radius:50% 50% 50% 0;background:var(--marigold); box-shadow:0 0 10px var(--marigold); transform:rotate(45deg);}
+  .navlinks{display:flex; gap:28px; font-size:15px; font-weight:600;}
+  .navlinks a{color:#fff; text-decoration:none; opacity:.88; transition:opacity .2s;}
+  .navlinks a:hover{opacity:1; color:var(--marigold);}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative; height:100vh; min-height:560px; width:100%; background:linear-gradient(180deg,#081420 0%, var(--river-night) 55%, #1a3a3d 100%); overflow:hidden;}
+  #riverCanvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .hero-content{
+    position:relative; z-index:5; height:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:0 20px; color:#fff;
+  }
+  .eyebrow{
+    font-size:13px; letter-spacing:3px; text-transform:uppercase; color:var(--marigold); font-weight:700; margin-bottom:14px;
+  }
+  .hero-content h1{font-size:clamp(38px,7vw,86px); margin:0; line-height:1.05; text-shadow:0 4px 30px rgba(0,0,0,.5);}
+  .hero-content p{max-width:560px; margin:18px auto 30px; font-size:17px; line-height:1.6; color:#dce8ea;}
+  .hero-ctas{display:flex; gap:14px; flex-wrap:wrap; justify-content:center;}
+  .btn{
+    padding:13px 26px; border-radius:30px; border:none; cursor:pointer; font-family:'Mukta'; font-weight:700; font-size:15px;
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-primary{background:var(--saffron); color:#fff; box-shadow:0 8px 22px rgba(230,126,34,.4);}
+  .btn-ghost{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.4);}
+
+  .ghat-silhouette{
+    position:absolute; bottom:0; left:0; right:0; height:14vh; min-height:70px; z-index:3;
+    background:linear-gradient(0deg, #061019 0%, transparent 100%);
+  }
+  .ghat-silhouette svg{width:100%; height:100%; display:block;}
+
+  .scroll-cue{position:absolute; bottom:22px; left:50%; transform:translateX(-50%); z-index:5; color:#cfe3e5; font-size:12px; letter-spacing:2px; text-transform:uppercase; opacity:.75; animation:bob 2s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translate(-50%,0);}50%{transform:translate(-50%,8px);}}
+
+  /* ---------- GOV STRIP ---------- */
+  .gov-strip{
+    background:#081420; color:#cfe3e5; font-size:12.5px; text-align:center;
+    padding:8px 16px; display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+    letter-spacing:.3px;
+  }
+  .gov-strip .emblem{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--marigold),var(--saffron)); flex-shrink:0;}
+
+  /* ---------- COUNTDOWN ---------- */
+  .countdown{display:flex; gap:14px; margin:26px 0; flex-wrap:wrap; justify-content:center;}
+  .cd-box{
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); border-radius:14px;
+    padding:14px 18px; min-width:74px; text-align:center; backdrop-filter:blur(4px);
+  }
+  .cd-box b{display:block; font-size:28px; color:var(--marigold); font-family:'Mukta'; font-weight:700; line-height:1;}
+  .cd-box span{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#cfe3e5;}
+  .cd-label{font-size:12.5px; color:#9fc3c5; margin-top:-14px; margin-bottom:4px;}
+
+  /* ---------- QUICK ACTIONS ---------- */
+  .quick-actions{background:var(--cream-card); padding:0 24px 60px;}
+  .qa-grid{max-width:1180px; margin:-46px auto 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:14px;
+    background:#fff; border:1px solid #e9dfc7; border-radius:20px; padding:22px; box-shadow:0 16px 40px rgba(51,43,34,.12); position:relative; z-index:10;}
+  .qa-item{display:flex; flex-direction:column; align-items:center; gap:8px; text-decoration:none; color:var(--stone); cursor:pointer; background:none; border:none; font-family:'Mukta'; padding:10px 4px; border-radius:12px; transition:background .2s;}
+  .qa-item:hover{background:#faf3e0;}
+  .qa-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--saffron),var(--vermilion)); display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;}
+  .qa-item span{font-size:12.5px; font-weight:600; text-align:center;}
+
+  /* ---------- WEATHER + ANNOUNCEMENTS ---------- */
+  .info-row{display:grid; grid-template-columns:1fr 1.4fr; gap:20px; margin-top:20px;}
+  @media(max-width:760px){.info-row{grid-template-columns:1fr;}}
+  .weather-card{background:linear-gradient(135deg,var(--river-night),#1a3a3d); color:#fff; border-radius:16px; padding:22px; display:flex; flex-direction:column; justify-content:space-between;}
+  .weather-top{display:flex; align-items:center; justify-content:space-between;}
+  .weather-temp{font-size:42px; font-weight:700; font-family:'Mukta';}
+  .weather-icon{font-size:38px;}
+  .weather-loc{font-size:13px; color:#9fc3c5; margin-top:4px;}
+  .weather-note{font-size:11.5px; color:#9fc3c5; margin-top:12px;}
+  .announce-card{background:var(--cream-card); border:1px solid #e9dfc7; border-radius:16px; padding:20px;}
+  .announce-card h3{margin:0 0 12px; font-size:17px;}
+  .announce-item{display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #efe6cf; font-size:13.5px;}
+  .announce-item:last-child{border-bottom:none;}
+  .announce-tag{flex-shrink:0; font-size:10.5px; font-weight:700; text-transform:uppercase; padding:3px 8px; border-radius:8px; color:#fff; height:fit-content;}
+  .tag-notice{background:var(--saffron);} .tag-traffic{background:var(--vermilion);} .tag-weather{background:#3A6EA5;}
+
+  /* ---------- LEADER HERO (official portal style) ---------- */
+  .leader-hero{
+    background:linear-gradient(120deg,#E67E22 0%, #D9701C 55%, #C4611A 100%);
+    padding:0 0 10px; position:relative; overflow:hidden;
+  }
+  .leader-hero::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 20% 100%, rgba(0,0,0,.18), transparent 55%);
+  }
+  .leader-hero-inner{
+    position:relative; max-width:1300px; margin:0 auto; min-height:420px;
+    display:grid; grid-template-columns:1fr 1.3fr 1fr; align-items:end; gap:10px; padding:0 30px;
+  }
+  .leader-card{display:flex; flex-direction:column; align-items:center; text-align:center;}
+  .leader-photo-placeholder{
+    width:100%; max-width:300px; aspect-ratio:3/4; border-radius:12px 12px 0 0;
+    background:rgba(255,255,255,.1); overflow:hidden;
+    display:flex; align-items:flex-end; justify-content:center;
+    box-shadow:0 10px 26px rgba(0,0,0,.25);
+  }
+  .leader-photo-placeholder img{width:100%; height:100%; object-fit:cover; object-position:top center; display:block;}
+  .leader-info{padding:14px 8px; color:#fff;}
+  .leader-info b{display:block; font-size:16px; font-family:'Mukta'; font-weight:700;}
+  .leader-info span{font-size:12.5px; color:#ffe4c4;}
+  .leader-quote{color:#fff; text-align:center; padding-bottom:60px; position:relative;}
+  .leader-quote .quote-mark{font-size:70px; color:rgba(255,255,255,.28); font-family:Georgia,serif; line-height:.6; margin-bottom:6px;}
+  .leader-quote h2{font-size:clamp(22px,3vw,32px); margin:0 0 10px; line-height:1.3;}
+  .leader-quote p{font-size:14px; color:#ffe4c4; max-width:380px; margin:0 auto;}
+  .leader-note{
+    position:relative; max-width:1300px; margin:0 auto; padding:8px 30px 18px; text-align:center;
+    font-size:11.5px; color:#ffe4c4; opacity:.9;
+  }
+  .util-bar{
+    display:flex; align-items:center; justify-content:space-between; padding:14px 30px;
+    background:linear-gradient(120deg,#E67E22,#D9701C); position:relative; flex-wrap:wrap; gap:12px;
+  }
+  .util-brand{display:flex; align-items:center; gap:14px; color:#fff;}
+  .util-brand .kalash{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.15); display:flex;align-items:center;justify-content:center; font-size:22px; border:2px solid rgba(255,255,255,.4);}
+  .util-brand b{display:block; font-size:22px; font-family:'Yatra One'; font-weight:400;}
+  .util-brand span{font-size:12px; color:#ffe4c4;}
+  .util-badges{display:flex; gap:16px; align-items:center;}
+  .util-badge{width:44px;height:44px;border-radius:50%; background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.5); display:flex;align-items:center;justify-content:center; color:#fff; font-size:18px;}
+  .sub-nav{background:#fff; display:flex; align-items:center; gap:4px; padding:0 30px; flex-wrap:wrap; box-shadow:0 2px 6px rgba(0,0,0,.06); position:sticky; top:0; z-index:100;}
+  .sub-nav a{padding:16px 18px; font-size:14.5px; font-weight:600; color:var(--stone); text-decoration:none; border-bottom:3px solid transparent;}
+  .sub-nav a.active, .sub-nav a:hover{color:var(--saffron); border-bottom-color:var(--saffron);}
+  @media(max-width:900px){
+    .leader-hero-inner{grid-template-columns:1fr; padding-bottom:20px;}
+    .leader-quote{padding-bottom:10px;}
+  }
+
+  /* ---------- GALLERY ---------- */
+  .gallery-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px;}
+  .gallery-card{border-radius:16px; overflow:hidden; position:relative; box-shadow:0 10px 26px rgba(51,43,34,.12); background:#000;}
+  .gallery-card img{width:100%; height:260px; object-fit:cover; display:block; transition:transform .4s ease;}
+  .gallery-card:hover img{transform:scale(1.06);}
+  .gallery-cap{position:absolute; left:0; right:0; bottom:0; padding:16px; background:linear-gradient(0deg, rgba(0,0,0,.75), transparent); color:#fff;}
+  .gallery-cap b{display:block; font-size:16px; font-family:'Mukta'; font-weight:700;}
+  .gallery-cap span{font-size:12px; color:#e9dfc7;}
+
+  /* ---------- FAQ ---------- */
+  .faq-list{max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:12px;}
+  .faq-item{background:var(--cream-card); border:1px solid #e9dfc7; border-radius:14px; overflow:hidden;}
+  .faq-q{width:100%; text-align:left; background:none; border:none; padding:18px 20px; font-family:'Mukta'; font-size:15.5px; font-weight:700; color:var(--stone); cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px;}
+  .faq-q .chevron{transition:transform .25s ease; color:var(--vermilion); font-size:14px; flex-shrink:0;}
+  .faq-item.open .chevron{transform:rotate(180deg);}
+  .faq-a{max-height:0; overflow:hidden; transition:max-height .3s ease;}
+  .faq-a p{margin:0; padding:0 20px 18px; font-size:14px; line-height:1.6; color:#665945;}
+
+  /* ---------- MODAL (Login) ---------- */
+  .modal-overlay{position:fixed; inset:0; background:rgba(15,20,25,.55); z-index:300; display:none; align-items:center; justify-content:center; padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:#fff; border-radius:18px; width:420px; max-width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.35);}
+  .modal-head{background:var(--river-night); color:#fff; padding:18px 22px; display:flex; align-items:center; justify-content:space-between;}
+  .modal-head h3{margin:0; font-size:19px;}
+  .modal-close{background:none; border:none; color:#fff; font-size:20px; cursor:pointer; line-height:1;}
+  .role-tabs{display:flex; flex-wrap:wrap; gap:6px; padding:16px 22px 0;}
+  .role-tab{padding:8px 12px; border-radius:16px; border:1.5px solid #e0d3ae; background:#fff; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--stone);}
+  .role-tab.active{background:var(--saffron); color:#fff; border-color:var(--saffron);}
+  .modal-body{padding:20px 22px 24px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:700; color:var(--stone); margin-bottom:6px;}
+  .field input, .field select, .field textarea{
+    width:100%; border:1.5px solid #e0d3ae; border-radius:10px; padding:10px 12px; font-family:'Mukta'; font-size:14px; outline:none; background:#fffdf6;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--saffron);}
+  .field textarea{resize:vertical; min-height:90px;}
+  .role-note{font-size:12px; color:#8a7c60; margin-bottom:14px; background:#f6efe0; padding:10px 12px; border-radius:10px;}
+  .form-submit{width:100%; background:var(--vermilion); color:#fff; border:none; padding:12px; border-radius:10px; font-family:'Mukta'; font-weight:700; font-size:15px; cursor:pointer;}
+  .form-submit:hover{background:#943127;}
+  .form-success{background:#e6f4ea; border:1px solid #b7dcc2; color:#2b6a3f; padding:14px 16px; border-radius:12px; font-size:13.5px; line-height:1.6; display:none;}
+
+  /* ---------- GRIEVANCE ---------- */
+  .grievance-shell{max-width:720px; margin:0 auto; background:var(--cream-card); border:1px solid #e9dfc7; border-radius:18px; padding:32px; box-shadow:0 12px 30px rgba(51,43,34,.08);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:560px){.field-row{grid-template-columns:1fr;}}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:80px 24px; max-width:1180px; margin:0 auto;}
+  .section-head{text-align:center; margin-bottom:44px;}
+  .section-head .eyebrow{color:var(--vermilion);}
+  .section-head h2{font-size:clamp(28px,4vw,44px); margin:6px 0 10px; color:var(--stone);}
+  .section-head p{max-width:600px; margin:0 auto; color:#665945; line-height:1.6;}
+
+  .reveal{opacity:0; transform:translateY(24px); transition:opacity .7s ease, transform .7s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+
+  /* ---------- TICKER ---------- */
+  .ticker-wrap{background:var(--river-night); padding:18px 0; overflow:hidden;}
+  .ticker-note{text-align:center; color:#9fc3c5; font-size:12px; letter-spacing:1px; margin-bottom:8px;}
+  .ticker{display:flex; gap:14px; width:max-content; animation:scroll-left 32s linear infinite;}
+  .ticker:hover{animation-play-state:paused;}
+  @keyframes scroll-left{from{transform:translateX(0);} to{transform:translateX(-50%);}}
+  .ticker-item{
+    display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+    padding:10px 18px; border-radius:12px; color:#fff; white-space:nowrap; font-size:14px;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;}
+  .dot.low{background:#5FBF7A;} .dot.med{background:var(--marigold);} .dot.high{background:var(--vermilion);}
+
+  /* ---------- MAP ---------- */
+  .map-shell{background:var(--cream-card); border:1px solid #e9dfc7; border-radius:18px; padding:18px; box-shadow:0 12px 30px rgba(51,43,34,.08);}
+  .map-filters{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+  .filter-chip{
+    padding:8px 16px; border-radius:20px; border:1.5px solid #d8cba6; background:#fff; cursor:pointer; font-weight:600; font-size:13.5px;
+    display:flex; align-items:center; gap:8px; transition:all .2s;
+  }
+  .filter-chip.active{background:var(--stone); color:#fff; border-color:var(--stone);}
+  .filter-chip .swatch{width:10px;height:10px;border-radius:50%;}
+  #map{height:460px; border-radius:12px; z-index:1;}
+  .map-note{font-size:12.5px; color:#8a7c60; margin-top:10px; line-height:1.5;}
+
+  /* ---------- FACILITIES ---------- */
+  .fac-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:18px;}
+  .fac-card{
+    background:var(--cream-card); border:1px solid #e9dfc7; border-radius:16px; padding:24px;
+    transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .fac-card:hover{transform:translateY(-4px); box-shadow:0 14px 28px rgba(51,43,34,.1);}
+  .fac-icon{
+    width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--saffron),var(--vermilion));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;margin-bottom:14px;
+  }
+  .fac-card h3{margin:0 0 8px; font-size:19px; font-family:'Mukta'; font-weight:700;}
+  .fac-card p{margin:0; font-size:14px; line-height:1.55; color:#665945;}
+
+  .emergency-strip{
+    margin-top:26px; background:var(--river-night); border-radius:16px; padding:22px 26px; color:#fff;
+    display:flex; flex-wrap:wrap; gap:22px; align-items:center; justify-content:space-between;
+  }
+  .emergency-strip .num{display:flex; flex-direction:column; gap:2px;}
+  .emergency-strip .num b{font-size:22px; color:var(--marigold); font-family:'Mukta'; font-weight:700;}
+  .emergency-strip .num span{font-size:12.5px; color:#cfe3e5;}
+
+  footer{background:var(--stone); color:#e9dfc7; padding:36px 24px; text-align:center; font-size:13.5px;}
+  footer b{color:var(--marigold);}
+
+  /* ---------- CHATBOT ---------- */
+  #chat-toggle{
+    position:fixed; bottom:24px; right:24px; z-index:200; width:62px; height:62px; border-radius:50%;
+    background:linear-gradient(135deg,var(--saffron),var(--vermilion)); border:none; cursor:pointer;
+    box-shadow:0 10px 26px rgba(174,59,44,.45); color:#fff; font-size:26px; display:flex; align-items:center; justify-content:center;
+    transition:transform .2s ease;
+  }
+  #chat-toggle:hover{transform:scale(1.06);}
+  #chat-panel{
+    position:fixed; bottom:98px; right:24px; z-index:200; width:360px; max-width:92vw; height:500px; max-height:74vh;
+    background:var(--cream-card); border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; overflow:hidden; opacity:0; pointer-events:none; transform:translateY(16px) scale(.97);
+    transition:opacity .25s ease, transform .25s ease; border:1px solid #e9dfc7;
+  }
+  #chat-panel.open{opacity:1; pointer-events:auto; transform:translateY(0) scale(1);}
+  .chat-head{background:var(--river-night); color:#fff; padding:16px 18px; display:flex; align-items:center; gap:10px;}
+  .chat-head .diya{width:12px;height:12px;border-radius:50% 50% 50% 0; background:var(--marigold); transform:rotate(45deg); box-shadow:0 0 8px var(--marigold);}
+  .chat-head div b{display:block; font-size:15px;}
+  .chat-head div span{font-size:11.5px; color:#9fc3c5;}
+  .chat-body{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; font-size:14px;}
+  .msg{max-width:84%; padding:10px 14px; border-radius:14px; line-height:1.5;}
+  .msg.bot{background:#efe6cf; align-self:flex-start; border-bottom-left-radius:4px;}
+  .msg.user{background:var(--saffron); color:#fff; align-self:flex-end; border-bottom-right-radius:4px;}
+  .msg.typing{background:#efe6cf; align-self:flex-start; color:#8a7c60; font-style:italic;}
+  .chat-input{display:flex; gap:8px; padding:12px; border-top:1px solid #e9dfc7; background:#fffdf6;}
+  .chat-input input{flex:1; border:1.5px solid #e0d3ae; border-radius:20px; padding:10px 14px; font-family:'Mukta'; font-size:14px; outline:none;}
+  .chat-input input:focus{border-color:var(--saffron);}
+  .chat-input button{background:var(--vermilion); color:#fff; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:16px;}
+  .chat-suggestions{display:flex; flex-wrap:wrap; gap:6px; padding:0 16px 12px;}
+  .sugg{font-size:12px; background:#efe6cf; border:none; padding:6px 10px; border-radius:12px; cursor:pointer; color:var(--stone);}
+
+  @media(max-width:640px){
+    .navlinks{display:none;}
+    section{padding:56px 18px;}
+    #map{height:340px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="gov-strip"><span class="emblem"></span> Government of Maharashtra · Nashik Municipal Corporation · Kumbh Mela Authority — <em>official branding to be added</em></div>
+
+<div class="util-bar">
+  <div class="util-brand">
+    <div class="kalash">🏺</div>
+    <div><b>महाकुंभ नाशिक</b><span>Mahakumbh Nashik · Sinhastha 2027</span></div>
+  </div>
+  <div class="util-badges">
+    <div class="util-badge" title="Campaign badge placeholder">🇮🇳</div>
+    <div class="util-badge" title="Campaign badge placeholder">✦</div>
+  </div>
+</div>
+<div class="sub-nav">
+  <a href="#" class="active">Home</a>
+  <a href="#assistant-info">About Kumbh</a>
+  <a href="#gallery">Gallery</a>
+  <a href="#faqs">FAQs</a>
+  <a href="#facilities">Important Contacts</a>
+  <a href="#grievance">Register Grievance</a>
+  <a href="#" onclick="openLogin();return false;">Login</a>
+</div>
+
+<section class="leader-hero">
+  <div class="leader-hero-inner">
+    <div class="leader-card">
+      <div class="leader-photo-placeholder"><img src="assets/pm-narendra-modi.png" alt="Shri Narendra Modi, Prime Minister of India"></div>
+      <div class="leader-info"><b>Shri Narendra Modi</b><span>Hon'ble Prime Minister of India</span></div>
+    </div>
+    <div class="leader-quote">
+      <div class="quote-mark">&ldquo;</div>
+      <h2>आस्था, विश्वास आणि परंपरेचा महासंगम</h2>
+      <p>Faith, unity and tradition converge on the banks of the Godavari — Mahakumbh, Nashik &amp; Trimbakeshwar.</p>
+    </div>
+    <div class="leader-card">
+      <div class="leader-photo-placeholder"><img src="assets/cm-devendra-fadnavis.png" alt="Shri Devendra Fadnavis, Chief Minister of Maharashtra"></div>
+      <div class="leader-info"><b>Shri Devendra Fadnavis</b><span>Hon'ble Chief Minister, Maharashtra</span></div>
+    </div>
+  </div>
+  <div class="leader-note">Please confirm with the PMO / CMO communications office that these portraits are the current officially approved images before this page goes live.</div>
+</section>
+
+<!-- HERO -->
+<div class="hero">
+  <canvas id="riverCanvas"></canvas>
+  <div class="ghat-silhouette">
+    <svg viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,80 L60,80 L60,60 L180,60 L180,90 L340,90 L340,50 L420,50 L420,100 L600,100 L600,65 L740,65 L740,95 L900,95 L900,55 L1020,55 L1020,88 L1200,88 L1200,120 L0,120 Z" fill="#061019"/></svg>
+  </div>
+  <div class="hero-content">
+    <div class="eyebrow">Sinhastha Kumbh · Nashik–Trimbakeshwar</div>
+    <h1>Mahakumbh<br>Nashik</h1>
+    <p>Your companion for the world's largest gathering of faith — find your ghat, your nearest help desk, and ask anything, day or night.</p>
+    <div class="cd-label" id="cdLabel">Counting down to Dhwajarohan (flag-hoisting ceremony)</div>
+    <div class="countdown" id="countdown">
+      <div class="cd-box"><b id="cdDays">--</b><span>Days</span></div>
+      <div class="cd-box"><b id="cdHours">--</b><span>Hours</span></div>
+      <div class="cd-box"><b id="cdMins">--</b><span>Mins</span></div>
+      <div class="cd-box"><b id="cdSecs">--</b><span>Secs</span></div>
+    </div>
+    <div class="hero-ctas">
+      <button class="btn btn-primary" onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'})">Open Live Map</button>
+      <button class="btn btn-ghost" onclick="openChat()">Ask Kumbh Mitra</button>
+    </div>
+  </div>
+  <div class="scroll-cue">Scroll ↓</div>
+</div>
+
+<!-- QUICK ACTIONS -->
+<div class="quick-actions">
+  <div class="qa-grid" id="qaGrid"></div>
+  <div style="max-width:1180px;margin:30px auto 0;">
+    <div class="info-row">
+      <div class="weather-card">
+        <div class="weather-top">
+          <div>
+            <div class="weather-temp" id="wxTemp">--°</div>
+            <div class="weather-loc">Nashik, Maharashtra</div>
+          </div>
+          <div class="weather-icon" id="wxIcon">⛅</div>
+        </div>
+        <div id="wxDesc" style="font-size:13.5px;color:#dce8ea;margin-top:10px;">Fetching live weather…</div>
+        <div class="weather-note">Live data via Open-Meteo. River water-level and official IMD alerts should replace this feed for production use.</div>
+      </div>
+      <div class="announce-card">
+        <h3>Latest Announcements</h3>
+        <div id="announceList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-note">Sample crowd indicator — for demo only, not live official data</div>
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<!-- MAP -->
+<section id="map-section">
+  <div class="section-head reveal">
+    <div class="eyebrow">Find your way</div>
+    <h2>Interactive Pilgrim Map</h2>
+    <p>Ghats, temples, medical camps, parking and help desks around Nashik and Trimbakeshwar. Tap a filter, then a pin, for details.</p>
+  </div>
+  <div class="map-shell reveal">
+    <div class="map-filters" id="filters"></div>
+    <div id="map"></div>
+    <div class="map-note">Marker locations are illustrative placements around real Kumbh Mela sites (Ramkund, Panchavati, Trimbakeshwar) for demonstration. Connect this to the official Kumbh Mela authority's live data feed before deployment.</div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery">
+  <div class="section-head reveal">
+    <div class="eyebrow">A glimpse of the sacred circuit</div>
+    <h2>Sacred Sites Gallery</h2>
+    <p>The temples, ghats and kunds at the heart of the Nashik–Trimbakeshwar Simhastha.</p>
+  </div>
+  <div class="gallery-grid reveal">
+    <div class="gallery-card">
+      <img src="assets/panchavati.png" alt="Panchavati, Nashik">
+      <div class="gallery-cap"><b>Panchavati</b><span>Nashik — heart of the pilgrim circuit on the Godavari</span></div>
+    </div>
+    <div class="gallery-card">
+      <img src="assets/someshwar.png" alt="Someshwar Mahadev Mandir, Nashik">
+      <div class="gallery-cap"><b>Someshwar Mahadev Mandir</b><span>Riverside temple upstream of the city</span></div>
+    </div>
+    <div class="gallery-card">
+      <img src="assets/trimbakeshwar.png" alt="Trimbakeshwar Jyotirlinga Temple">
+      <div class="gallery-cap"><b>Trimbakeshwar Temple</b><span>One of the twelve Jyotirlingas of Lord Shiva</span></div>
+    </div>
+    <div class="gallery-card">
+      <img src="assets/kushavarta-kund.png" alt="Kushavarta Kund, Trimbakeshwar">
+      <div class="gallery-cap"><b>Kushavarta Kund</b><span>Sacred kund at the symbolic origin of the Godavari</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faqs">
+  <div class="section-head reveal">
+    <div class="eyebrow">Before you travel</div>
+    <h2>Frequently Asked Questions</h2>
+    <p>Common questions from pilgrims planning their Mahakumbh visit.</p>
+  </div>
+  <div class="faq-list reveal" id="faqList"></div>
+</section>
+
+<!-- FACILITIES -->
+<section id="facilities">
+  <div class="section-head reveal">
+    <div class="eyebrow">Stay safe & supported</div>
+    <h2>Pilgrim Facilities</h2>
+    <p>Everything laid out for a smooth, safe darshan — from the moment you arrive to the moment you head home.</p>
+  </div>
+  <div class="fac-grid reveal" id="facGrid"></div>
+  <div class="emergency-strip reveal">
+    <div class="num"><b>100</b><span>Police</span></div>
+    <div class="num"><b>101</b><span>Fire</span></div>
+    <div class="num"><b>108</b><span>Ambulance</span></div>
+    <div class="num"><b>112</b><span>National Emergency</span></div>
+    <div class="num"><span style="color:#dce8ea;max-width:220px;">Save the official Kumbh Mela control room number displayed at every help desk on arrival.</span></div>
+  </div>
+</section>
+
+<!-- ASSISTANT INFO -->
+<section id="assistant-info">
+  <div class="section-head reveal">
+    <div class="eyebrow">Always awake, always kind</div>
+    <h2>Meet Kumbh Mitra</h2>
+    <p>An AI assistant in the corner of your screen — ask about directions, timings, rituals, or what to do if you get separated from your group. Tap the diya icon bottom-right anytime.</p>
+    <button class="btn btn-primary reveal" onclick="openChat()">Start a conversation</button>
+  </div>
+</section>
+
+<!-- GRIEVANCE -->
+<section id="grievance">
+  <div class="section-head reveal">
+    <div class="eyebrow">We're listening</div>
+    <h2>Register a Grievance</h2>
+    <p>Report a problem, request help, or flag something that needs attention — our team will follow up.</p>
+  </div>
+  <div class="grievance-shell reveal">
+    <div class="form-success" id="grievanceSuccess"></div>
+    <form id="grievanceForm" onsubmit="submitGrievance(event)">
+      <div class="field-row">
+        <div class="field"><label>Full Name *</label><input type="text" id="gName" required placeholder="Your name"></div>
+        <div class="field"><label>Phone Number *</label><input type="tel" id="gPhone" required placeholder="10-digit mobile number"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Email Address *</label><input type="email" id="gEmail" required placeholder="you@example.com"></div>
+        <div class="field"><label>Category</label>
+          <select id="gCategory">
+            <option>Facilities (water, toilets, parking)</option>
+            <option>Medical / Safety</option>
+            <option>Lost & Found</option>
+            <option>Crowd / Security concern</option>
+            <option>Accommodation</option>
+            <option>Website / App issue</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Subject *</label><input type="text" id="gSubject" required placeholder="Brief summary of the issue"></div>
+      <div class="field"><label>Help Required — describe the issue *</label><textarea id="gDetails" required placeholder="Please share details: location, time, what happened, and what help you need."></textarea></div>
+      <div class="field"><label>Priority</label>
+        <select id="gPriority">
+          <option>Low</option>
+          <option selected>Medium</option>
+          <option>High — urgent</option>
+        </select>
+      </div>
+      <button type="submit" class="form-submit">Submit Grievance</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  Built as a working prototype for pilgrim assistance during <b>Mahakumbh, Nashik</b>. Map data © OpenStreetMap contributors · Demo content only.
+</footer>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginOverlay" onclick="if(event.target===this)closeLogin()">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Login to Kumbh Mitra</h3><button class="modal-close" onclick="closeLogin()">✕</button></div>
+    <div class="role-tabs" id="roleTabs"></div>
+    <div class="modal-body">
+      <div class="role-note" id="roleNote"></div>
+      <div class="form-success" id="loginSuccess"></div>
+      <form id="loginForm" onsubmit="submitLogin(event)">
+        <div class="field"><label>Username / ID</label><input type="text" id="lUser" required placeholder="Enter your ID"></div>
+        <div class="field"><label>Password</label><input type="password" id="lPass" required placeholder="Enter your password"></div>
+        <button type="submit" class="form-submit">Login</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- CHATBOT -->
+<button id="chat-toggle" onclick="toggleChat()">🪔</button>
+<div id="chat-panel">
+  <div class="chat-head">
+    <div class="diya"></div>
+    <div><b>Kumbh Mitra</b><span>AI pilgrim assistant</span></div>
+  </div>
+  <div class="chat-body" id="chatBody">
+    <div class="msg bot">Namaste 🙏 I'm Kumbh Mitra. Ask me about ghats, timings, facilities, or what to do if you're lost.</div>
+  </div>
+  <div class="chat-suggestions">
+    <button class="sugg" onclick="sendSuggestion('How do I get to Ramkund?')">How do I reach Ramkund?</button>
+    <button class="sugg" onclick="sendSuggestion('What should I do if I get separated from my family?')">Lost from my group</button>
+    <button class="sugg" onclick="sendSuggestion('What is the best time to avoid crowds?')">Best time to visit</button>
+  </div>
+  <div class="chat-input">
+    <input id="chatInput" type="text" placeholder="Type your question..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= NAV SCROLL ================= */
+// (sticky sub-nav handles this purely via CSS now)
+
+/* ================= REVEAL ON SCROLL ================= */
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+},{threshold:.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* ================= THREE.JS RIVER + DIYAS ================= */
+(function(){
+  const canvas=document.getElementById('riverCanvas');
+  const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  const scene=new THREE.Scene();
+  scene.fog=new THREE.FogExp2(0x0f2438, 0.028);
+  const camera=new THREE.PerspectiveCamera(55, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
+  camera.position.set(0, 3.2, 7.5);
+  camera.lookAt(0,0,-6);
+
+  function resize(){
+    const w=canvas.clientWidth, h=canvas.clientHeight;
+    renderer.setSize(w,h,false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize',resize);
+
+  // river plane
+  const riverGeo=new THREE.PlaneGeometry(30,40,80,100);
+  const riverMat=new THREE.MeshPhongMaterial({color:0x1c5a5e, shininess:80, specular:0x8fd9d0, side:THREE.DoubleSide, transparent:true, opacity:0.92});
+  const river=new THREE.Mesh(riverGeo, riverMat);
+  river.rotation.x=-Math.PI/2.15;
+  river.position.set(0,-1.4,-10);
+  scene.add(river);
+  const pos=riverGeo.attributes.position;
+  const basePos=Float32Array.from(pos.array);
+
+  // lights
+  scene.add(new THREE.AmbientLight(0x445566,1.1));
+  const moon=new THREE.DirectionalLight(0x9fd0d6,0.7);
+  moon.position.set(-4,8,2); scene.add(moon);
+
+  // diyas
+  const diyaGroup=new THREE.Group(); scene.add(diyaGroup);
+  const diyas=[];
+  const diyaBaseGeo=new THREE.CylinderGeometry(0.14,0.18,0.06,10);
+  const diyaBaseMat=new THREE.MeshStandardMaterial({color:0x7a4a25, roughness:0.8});
+  const flameGeo=new THREE.SphereGeometry(0.06,8,8);
+  const flameMat=new THREE.MeshBasicMaterial({color:0xffb347});
+
+  for(let i=0;i<26;i++){
+    const g=new THREE.Group();
+    const base=new THREE.Mesh(diyaBaseGeo,diyaBaseMat);
+    const flame=new THREE.Mesh(flameGeo,flameMat);
+    flame.position.y=0.08;
+    g.add(base); g.add(flame);
+    const light=new THREE.PointLight(0xffa542, 1.1, 2.4);
+    light.position.y=0.15; g.add(light);
+
+    const lane=(Math.random()-0.5)*9;
+    const startZ=6-Math.random()*40;
+    g.position.set(lane,-1.28,startZ);
+    g.userData={speed:0.35+Math.random()*0.4, bob:Math.random()*Math.PI*2, lane};
+    diyaGroup.add(g); diyas.push(g);
+  }
+
+  let t=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!reduceMotion){
+      t+=0.012;
+      const arr=pos.array;
+      for(let i=0;i<arr.length;i+=3){
+        const x=basePos[i], y=basePos[i+1];
+        arr[i+2]=Math.sin(x*0.5+t*1.6)*0.18 + Math.cos(y*0.35+t*1.1)*0.14;
+      }
+      pos.needsUpdate=true;
+      riverGeo.computeVertexNormals();
+
+      diyas.forEach(g=>{
+        g.position.z += g.userData.speed*0.05;
+        if(g.position.z>7){ g.position.z=-34; }
+        g.userData.bob+=0.05;
+        g.position.y=-1.28+Math.sin(g.userData.bob)*0.05;
+        g.children[1].scale.setScalar(1+Math.sin(g.userData.bob*3)*0.15);
+      });
+      camera.position.x=Math.sin(t*0.15)*0.6;
+    }
+    renderer.render(scene,camera);
+  }
+  resize();
+  animate();
+})();
+
+/* ================= COUNTDOWN ================= */
+// Dhwajarohan (flag-hoisting, official start): 31 Oct 2026. First Amrit/Shahi Snan: 2 Aug 2027.
+const DHWAJAROHAN=new Date('2026-10-31T06:00:00+05:30');
+const FIRST_SHAHI_SNAN=new Date('2027-08-02T06:00:00+05:30');
+function updateCountdown(){
+  const now=new Date();
+  let target=DHWAJAROHAN, label='Counting down to Dhwajarohan (flag-hoisting ceremony)';
+  if(now>=DHWAJAROHAN){ target=FIRST_SHAHI_SNAN; label='Counting down to the first Amrit Snan (Shahi Snan)'; }
+  document.getElementById('cdLabel').textContent=label;
+  const diff=Math.max(0,target-now);
+  const d=Math.floor(diff/86400000), h=Math.floor(diff/3600000)%24, m=Math.floor(diff/60000)%60, s=Math.floor(diff/1000)%60;
+  document.getElementById('cdDays').textContent=d;
+  document.getElementById('cdHours').textContent=String(h).padStart(2,'0');
+  document.getElementById('cdMins').textContent=String(m).padStart(2,'0');
+  document.getElementById('cdSecs').textContent=String(s).padStart(2,'0');
+}
+updateCountdown(); setInterval(updateCountdown,1000);
+
+/* ================= QUICK ACTIONS ================= */
+const quickActions=[
+  {icon:'🗺️', label:'Live Map', action:()=>document.getElementById('map-section').scrollIntoView({behavior:'smooth'})},
+  {icon:'🧭', label:'Plan My Visit', action:()=>alert('Journey Planner is coming in the next build phase — will generate a full train → bus → parking → ghat route.')},
+  {icon:'🚨', label:'Emergency', action:()=>document.getElementById('facilities').scrollIntoView({behavior:'smooth'})},
+  {icon:'🪔', label:'AI Assistant', action:()=>openChat()},
+  {icon:'🏨', label:'Accommodation', action:()=>document.getElementById('facilities').scrollIntoView({behavior:'smooth'})},
+  {icon:'📊', label:'Live Crowd', action:()=>document.querySelector('.ticker-wrap').scrollIntoView({behavior:'smooth'})},
+  {icon:'🔍', label:'Lost & Found', action:()=>document.getElementById('facilities').scrollIntoView({behavior:'smooth'})},
+];
+document.getElementById('qaGrid').innerHTML=quickActions.map((q,i)=>`
+  <button class="qa-item" onclick="quickActions[${i}].action()"><div class="qa-icon">${q.icon}</div><span>${q.label}</span></button>
+`).join('');
+
+/* ================= WEATHER (live, no key — Open-Meteo) ================= */
+(async function loadWeather(){
+  try{
+    const res=await fetch('https://api.open-meteo.com/v1/forecast?latitude=19.9975&longitude=73.7898&current=temperature_2m,weather_code&timezone=Asia%2FKolkata');
+    const data=await res.json();
+    const t=Math.round(data.current.temperature_2m);
+    const codeMap={0:['☀️','Clear sky'],1:['🌤️','Mostly clear'],2:['⛅','Partly cloudy'],3:['☁️','Overcast'],45:['🌫️','Foggy'],48:['🌫️','Foggy'],51:['🌦️','Light drizzle'],61:['🌧️','Light rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],80:['🌦️','Rain showers'],95:['⛈️','Thunderstorm']};
+    const [icon,desc]=codeMap[data.current.weather_code]||['🌤️','—'];
+    document.getElementById('wxTemp').textContent=t+'°C';
+    document.getElementById('wxIcon').textContent=icon;
+    document.getElementById('wxDesc').textContent=desc+' in Nashik right now.';
+  }catch(e){
+    document.getElementById('wxDesc').textContent='Weather feed unavailable right now.';
+  }
+})();
+
+/* ================= ANNOUNCEMENTS (demo data — replace with CMS/govt feed) ================= */
+const announcements=[
+  {tag:'notice', tagLabel:'Notice', text:'Dhwajarohan ceremony scheduled for 31 Oct 2026 at Trimbakeshwar, Ramkund and Panchavati.'},
+  {tag:'traffic', tagLabel:'Traffic', text:'Sample: heavy-vehicle diversions planned near Panchavati during peak bathing days.'},
+  {tag:'weather', tagLabel:'Weather', text:'Sample: monsoon advisory — carry rain protection during July–September visits.'},
+  {tag:'notice', tagLabel:'Notice', text:'Sample: registration for volunteer services will open closer to the Mela dates.'},
+];
+document.getElementById('announceList').innerHTML=announcements.map(a=>`
+  <div class="announce-item"><span class="announce-tag tag-${a.tag}">${a.tagLabel}</span><span>${a.text}</span></div>
+`).join('');
+
+/* ================= TICKER DATA ================= */
+const ghatStatus=[
+  {name:'Ramkund', level:'high'},
+  {name:'Kushavarta (Trimbakeshwar)', level:'med'},
+  {name:'Someshwar Ghat', level:'low'},
+  {name:'Panchavati Sangam', level:'high'},
+  {name:'Tapovan', level:'med'},
+  {name:'Nashik Road Entry', level:'med'},
+];
+const tickerEl=document.getElementById('ticker');
+function labelFor(l){return l==='high'?'Very Crowded':l==='med'?'Moderate':'Comfortable';}
+let tHtml='';
+[...ghatStatus,...ghatStatus].forEach(g=>{
+  tHtml+=`<div class="ticker-item"><span class="dot ${g.level}"></span>${g.name} — ${labelFor(g.level)}</div>`;
+});
+tickerEl.innerHTML=tHtml;
+
+/* ================= FACILITY CARDS ================= */
+const facilities=[
+  {icon:'⛑️', title:'Medical Camps', text:'First-aid and emergency medical camps stationed near every major ghat and entry point.'},
+  {icon:'💧', title:'Drinking Water', text:'Free RO water points along pilgrim routes — refill stations marked on the map.'},
+  {icon:'🧭', title:'Help Desks', text:'Volunteers and language help at marked kiosks for directions and general queries.'},
+  {icon:'🔍', title:'Lost & Found', text:'Report a lost person or item at the nearest help desk; announcements are made periodically.'},
+  {icon:'🚗', title:'Parking Zones', text:'Designated parking areas outside the pedestrian core, with shuttle points to the ghats.'},
+  {icon:'🛏️', title:'Accommodation', text:'Government dharamshalas, tent cities and registered private stays near the route.'},
+];
+document.getElementById('facGrid').innerHTML=facilities.map(f=>`
+  <div class="fac-card"><div class="fac-icon">${f.icon}</div><h3>${f.title}</h3><p>${f.text}</p></div>
+`).join('');
+
+/* ================= LEAFLET MAP ================= */
+const categories={
+  ghat:{label:'Ghats & Temples', color:'#AE3B2C'},
+  medical:{label:'Medical Camp', color:'#2E8B57'},
+  parking:{label:'Parking', color:'#3A6EA5'},
+  help:{label:'Help Desk', color:'#E67E22'},
+};
+const places=[
+  {name:'Ramkund', cat:'ghat', lat:19.9975, lng:73.7898, desc:'The most sacred bathing ghat on the Godavari, in Panchavati.'},
+  {name:'Kalaram Temple, Panchavati', cat:'ghat', lat:19.9968, lng:73.7899, desc:'Historic temple at the heart of the Panchavati pilgrim circuit.'},
+  {name:'Kushavarta Kund, Trimbakeshwar', cat:'ghat', lat:19.9319, lng:73.5306, desc:'Sacred kund at the origin of the Godavari, ~28 km from Nashik city.'},
+  {name:'Someshwar Ghat', cat:'ghat', lat:19.9686, lng:73.7519, desc:'Riverside ghat upstream of the city, popular for a quieter darshan.'},
+  {name:'Ramkund Medical Camp', cat:'medical', lat:19.9982, lng:73.7906, desc:'Illustrative first-aid camp near the main ghat.'},
+  {name:'Trimbakeshwar Medical Camp', cat:'medical', lat:19.9326, lng:73.5298, desc:'Illustrative medical support point near Kushavarta.'},
+  {name:'Panchavati Parking Zone', cat:'parking', lat:19.9995, lng:73.7930, desc:'Illustrative overflow parking with shuttle access to Ramkund.'},
+  {name:'Trimbakeshwar Parking Zone', cat:'parking', lat:19.9295, lng:73.5340, desc:'Illustrative vehicle parking outside the pedestrian core.'},
+  {name:'Panchavati Help Desk', cat:'help', lat:19.9960, lng:73.7885, desc:'Illustrative volunteer help point for directions and queries.'},
+  {name:'Nashik Road Help Desk', cat:'help', lat:19.9483, lng:73.8210, desc:'Illustrative help desk near the railway station entry.'},
+];
+
+const map=L.map('map',{scrollWheelZoom:false}).setView([19.965,73.72],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+function makeIcon(color){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);"></div>`,
+    iconSize:[18,18], iconAnchor:[9,18], popupAnchor:[0,-16]
+  });
+}
+const markerLayers={};
+Object.keys(categories).forEach(c=>markerLayers[c]=L.layerGroup().addTo(map));
+places.forEach(p=>{
+  const m=L.marker([p.lat,p.lng],{icon:makeIcon(categories[p.cat].color)})
+    .bindPopup(`<b>${p.name}</b><br>${p.desc}`);
+  markerLayers[p.cat].addLayer(m);
+});
+
+const filtersEl=document.getElementById('filters');
+filtersEl.innerHTML=Object.entries(categories).map(([key,c])=>`
+  <div class="filter-chip active" data-cat="${key}" onclick="toggleCat('${key}',this)">
+    <span class="swatch" style="background:${c.color}"></span>${c.label}
+  </div>
+`).join('');
+function toggleCat(key, el){
+  const active=el.classList.toggle('active');
+  if(active) map.addLayer(markerLayers[key]); else map.removeLayer(markerLayers[key]);
+}
+setTimeout(()=>map.invalidateSize(),300);
+
+/* ================= CHATBOT (Anthropic API) ================= */
+let chatOpen=false;
+let chatHistory=[];
+function toggleChat(){
+  chatOpen=!chatOpen;
+  document.getElementById('chat-panel').classList.toggle('open',chatOpen);
+}
+function openChat(){ if(!chatOpen) toggleChat(); }
+function sendSuggestion(text){
+  document.getElementById('chatInput').value=text;
+  sendMessage();
+}
+function appendMsg(text, cls){
+  const body=document.getElementById('chatBody');
+  const div=document.createElement('div');
+  div.className='msg '+cls;
+  div.textContent=text;
+  body.appendChild(div);
+  body.scrollTop=body.scrollHeight;
+  return div;
+}
+async function sendMessage(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+  if(!text) return;
+  input.value='';
+  appendMsg(text,'user');
+  chatHistory.push({role:'user', content:text});
+  const typingEl=appendMsg('Kumbh Mitra is typing…','typing');
+
+  try{
+    // This calls OUR OWN server (server.js), which holds the real API key
+    // and forwards the request to Anthropic. The browser never sees the key.
+    const response=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ messages: chatHistory })
+    });
+    const data=await response.json();
+    typingEl.remove();
+    if(!response.ok){
+      throw new Error(data.error || 'Server error');
+    }
+    const textBlock=(data.content||[]).find(b=>b.type==='text');
+    const reply=textBlock ? textBlock.text : "Sorry, I couldn't get a response just now — please try again.";
+    appendMsg(reply,'bot');
+    chatHistory.push({role:'assistant', content:reply});
+  }catch(err){
+    typingEl.remove();
+    appendMsg("I'm having trouble connecting right now. Please try again in a moment.",'bot');
+    console.error(err);
+  }
+}
+
+/* ================= FAQ ================= */
+const faqs=[
+  {q:'What is Mahakumbh / Sinhastha, and why is it held at Nashik?', a:'The Sinhastha Kumbh Mela is one of four rotating Kumbh gatherings held every 12 years, this one along the Godavari river at Nashik and Trimbakeshwar. Pilgrims gather for a sacred bath believed to cleanse sins and grant spiritual merit, alongside processions of Akhadas (monastic orders).'},
+  {q:'What are the official dates for the next Mahakumbh at Nashik?', a:'The Dhwajarohan (flag-hoisting ceremony marking the formal start) is scheduled for 31 October 2026, with the main Shahi/Amrit Snan bathing dates through 2027. Always confirm exact dates closer to the event via official Kumbh Mela Authority notices, as auspicious dates can be revised.'},
+  {q:'How do I reach Ramkund or Trimbakeshwar from outside Nashik?', a:'Nashik is well connected by rail (Nashik Road station) and road (MSRTC buses, private buses) from major Maharashtra cities, and by air via Nashik (Ozar) Airport. Trimbakeshwar is about 28–30 km from Nashik city by road, with dedicated pilgrim buses expected during the Mela.'},
+  {q:'Is there a dress code or ritual etiquette I should know?', a:"Modest, comfortable clothing is recommended, especially near temples and bathing ghats. Footwear is typically removed before entering temple premises. Specific rules for each temple (like Trimbakeshwar) will be listed on that temple's page."},
+  {q:'What should I do if I get separated from my family or group?', a:"Head to the nearest Help Desk or Lost & Found centre immediately — these are marked on the Live Map. Keep a printed or photographed ID for each family member, and agree on a fixed meeting point in advance in case phones don't work in heavy crowds."},
+  {q:'Are medical facilities available near the ghats?', a:'Yes — illustrative medical camp locations are shown on the Live Map near major ghats. In an emergency, call 108 (Ambulance) or use the SOS option once the Emergency Center is fully connected to live services.'},
+  {q:'Can I book accommodation through this website?', a:'The Accommodation section currently lists categories (government, private, dharamshala, tent city) as a preview. Live booking integration is planned for a future phase — for now, please check official listings or contact the numbers provided.'},
+  {q:'How do I report a lost item or a problem I faced during my visit?', a:"Use the \"Register Grievance\" form on this site — include your contact details, category, and a description of what happened. You'll receive a reference ticket ID to track your report."},
+];
+document.getElementById('faqList').innerHTML=faqs.map((f,i)=>`
+  <div class="faq-item" id="faq-${i}">
+    <button class="faq-q" onclick="toggleFaq(${i})">${f.q}<span class="chevron">▾</span></button>
+    <div class="faq-a" id="faq-a-${i}"><p>${f.a}</p></div>
+  </div>
+`).join('');
+function toggleFaq(i){
+  const item=document.getElementById('faq-'+i);
+  const body=document.getElementById('faq-a-'+i);
+  const isOpen=item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el=>{el.classList.remove('open'); el.querySelector('.faq-a').style.maxHeight=null;});
+  if(!isOpen){ item.classList.add('open'); body.style.maxHeight=body.scrollHeight+'px'; }
+}
+
+/* ================= LOGIN MODAL (multi-role, demo only) ================= */
+const roles=[
+  {key:'pilgrim', label:'Pilgrim', note:'Login lets pilgrims save routes, favourite temples, and past grievance tickets.'},
+  {key:'vendor', label:'Vendor', note:'For registered food, retail and service vendors to manage their stall permits and slots.'},
+  {key:'police', label:'Police', note:'Restricted access for law-enforcement personnel to view crowd/security dashboards.'},
+  {key:'nagarpalika', label:'Nagarpalika / Municipal Staff', note:'For Nashik Municipal Corporation staff managing facilities, sanitation and infrastructure reports.'},
+  {key:'admin', label:'Kumbh Mela Admin', note:'For Kumbh Mela Authority administrators managing site-wide content and announcements.'},
+];
+let activeRole='pilgrim';
+document.getElementById('roleTabs').innerHTML=roles.map(r=>`
+  <button class="role-tab ${r.key==='pilgrim'?'active':''}" id="tab-${r.key}" onclick="switchRole('${r.key}')">${r.label}</button>
+`).join('');
+function switchRole(key){
+  activeRole=key;
+  document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+key).classList.add('active');
+  document.getElementById('roleNote').textContent=roles.find(r=>r.key===key).note;
+  document.getElementById('loginForm').style.display='block';
+  document.getElementById('loginSuccess').style.display='none';
+}
+function openLogin(){ switchRole('pilgrim'); document.getElementById('loginOverlay').classList.add('open'); }
+function closeLogin(){ document.getElementById('loginOverlay').classList.remove('open'); }
+function submitLogin(e){
+  e.preventDefault();
+  document.getElementById('loginForm').style.display='none';
+  const box=document.getElementById('loginSuccess');
+  box.style.display='block';
+  box.textContent=`This is a demo login for the "${roles.find(r=>r.key===activeRole).label}" role — no real account system is connected yet. A production version needs a verified backend (e.g. government SSO or a role-based auth service) before real credentials are entered here.`;
+}
+
+/* ================= GRIEVANCE FORM ================= */
+async function submitGrievance(e){
+  e.preventDefault();
+  const payload={
+    name:document.getElementById('gName').value,
+    phone:document.getElementById('gPhone').value,
+    email:document.getElementById('gEmail').value,
+    category:document.getElementById('gCategory').value,
+    subject:document.getElementById('gSubject').value,
+    details:document.getElementById('gDetails').value,
+    priority:document.getElementById('gPriority').value,
+  };
+  let ticket=null, note='';
+  try{
+    const res=await fetch('/api/grievance',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    if(res.ok){ const data=await res.json(); ticket=data.ticket; }
+    else{ throw new Error('server responded with error'); }
+  }catch(err){
+    ticket='KM-'+Math.floor(100000+Math.random()*900000);
+    note='<br><br><span style="color:#8a7c60;">Note: running without a connected backend right now, so this reference number is local only — start server.js to actually save grievances.</span>';
+  }
+  document.getElementById('grievanceForm').style.display='none';
+  const box=document.getElementById('grievanceSuccess');
+  box.style.display='block';
+  box.innerHTML=`Thank you, ${payload.name}. Your grievance has been recorded with reference <b>${ticket}</b>.${note}`;
+}
+</script>
+</body>
+</html>
